@@ -1,11 +1,14 @@
 """
-      code reference : https://github.com/pytorch/pytorch/issues/2001,
+    This is a fork from: https://github.com/graykode/modelsummary
 """
+
 from functools import reduce
 
 from torch.nn.modules.module import _addindent
 
-def hierarchicalsummary(model):
+
+def hierarchical_summary(model, print_summary=False):
+
     def repr(model):
         # We treat the extra repr like the sub-module, one item per line
         extra_lines = []
@@ -39,5 +42,7 @@ def hierarchicalsummary(model):
         return main_str, total_params
 
     string, count = repr(model)
-    print(string)
-    return count
+    if print_summary:
+        print(string)
+
+    return string, count
