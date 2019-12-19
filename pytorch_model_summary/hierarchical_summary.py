@@ -42,7 +42,16 @@ def hierarchical_summary(model, print_summary=False):
         return main_str, total_params
 
     string, count = repr(model)
-    if print_summary:
-        print(string)
 
-    return string, count
+    # Building hierarchical output
+    _pad = int(max(max(len(_) for _ in string.split('\n')) - 20, 0) / 2)
+    lines = list()
+    lines.append('=' * _pad + ' Hierarchical Summary ' + '=' * _pad + '\n')
+    lines.append(string)
+    lines.append('\n\n' + '=' * (_pad * 2 + 22) + '\n')
+
+    str_summary = '\n'.join(lines)
+    if print_summary:
+        print(str_summary)
+
+    return str_summary, count

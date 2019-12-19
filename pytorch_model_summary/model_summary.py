@@ -9,24 +9,39 @@ from pytorch_model_summary.hierarchical_summary import hierarchical_summary
 
 
 def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=False, 
-            print_summary=False):
+            print_summary=False, max_depth=1, show_parent_layers=False):
 
-    def register_id_parent_id(module):
-        _map_modulelist_ids = dict()
+    max_depth = max_depth if max_depth is not None else 9999
 
-        def _register(module):
+    def build_module_tree(module):
+
+        def _in(module, id_parent, depth):
             for c in module.children():
-                map_id_parent_id[id(c)] = id(module)
-                register_id_parent_id(c)
-                if isinstance(c, nn.ModuleList):
-                    _map_modulelist_ids[id(c)] = id(module)
+                # ModuleList and Sequential do not count as valid layers
+                if isinstance(c, (nn.ModuleList, nn.Sequential)):
+                    _in(c, id_parent, depth)
+                else:
+                    _module_name = str(c.__class__).split(".")[-1].split("'")[0]
+                    _parent_layers = f'{module_summary[id_parent].get("parent_layers")}' \
+                                     f'{"/" if module_summary[id_parent].get("parent_layers") != "" else ""}' \
+                                     f'{module_summary[id_parent]["module_name"]}'
 
-        _register(module)
+                    module_summary[id(c)] = {'module_name': _module_name, 'parent_layers': _parent_layers,
+                                             'id_parent': id_parent, 'depth': depth, 'n_children': 0}
 
-        if len(_map_modulelist_ids):
-            for m in map_id_parent_id.keys():
-                if map_id_parent_id.get(m) in _map_modulelist_ids:
-                    map_id_parent_id[m] = _map_modulelist_ids.get(map_id_parent_id.get(m))
+                    module_summary[id_parent]['n_children'] += 1
+
+                    _in(c, id(c), depth+1)
+
+        # Defining summary for the main module
+        module_summary[id(module)] = {'module_name': str(module.__class__).split(".")[-1].split("'")[0],
+                                      'parent_layers': '', 'id_parent': None, 'depth': 0, 'n_children': 0}
+
+        _in(module, id_parent=id(module), depth=1)
+
+        # Defining layers that will be printed
+        for k, v in module_summary.items():
+            module_summary[k]['show'] = v['depth'] == max_depth or (v['depth'] < max_depth and v['n_children'] == 0)
 
     def register_hook(module):
         
@@ -48,11 +63,12 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
             return _lst
 
         def hook(module, input, output=None):
-            class_name = str(module.__class__).split(".")[-1].split("'")[0]
+            module_name = module_summary.get(id(module)).get('module_name')
             module_idx = len(summary)
 
-            m_key = "%s-%i" % (class_name, module_idx + 1)
+            m_key = "%s-%i" % (module_name, module_idx + 1)
             summary[m_key] = OrderedDict()
+            summary[m_key]['parent_layers'] = module_summary.get(id(module)).get('parent_layers')
 
             summary[m_key]["input_shape"] = shapes(input) if len(input) != 0 else input
 
@@ -73,7 +89,8 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
             summary[m_key]["nb_params_trainable"] = params_trainable
             summary[m_key]["trainable"] = trainable
 
-        if not isinstance(module, nn.Sequential) and id(module) != id(model) and map_id_parent_id[id(module)] == id(model):
+        _map_module = module_summary.get(id(module), None)
+        if _map_module is not None and _map_module.get('show'):
             if show_input is True:
                 hooks.append(module.register_forward_pre_hook(hook))
             else:
@@ -81,45 +98,48 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
 
     # create properties
     summary = OrderedDict()
-    map_id_parent_id = dict()
+    module_summary = dict()
     hooks = []
 
     # register id of parent modules
-    register_id_parent_id(model)
+    build_module_tree(model)
 
     # register hook
     model.apply(register_hook)
-    out = model(*inputs)
+    model(*inputs)
 
     # remove these hooks
     for h in hooks:
         h.remove()
 
-    # params to format output
+    # params to format output - dynamic width
     _key_shape = 'input_shape' if show_input else 'output_shape'
+    _len_str_parent = max([len(v['parent_layers']) for v in summary.values()] + [13]) + 3
     _len_str_layer = max([len(layer) for layer in summary.keys()] + [15]) + 3
     _len_str_shapes = max([len(', '.join([str(_) for _ in summary[layer][_key_shape]])) for layer in summary] + [15]) + 3
-    _len_line = 34 + _len_str_layer + _len_str_shapes
-    fmt = "{:>%d}  {:>%d} {:>15} {:>15}" % (_len_str_layer, _len_str_shapes)
+    _len_line = 35 + _len_str_parent * int(show_parent_layers) + _len_str_layer + _len_str_shapes
+    fmt = ("{:>%d} " % _len_str_parent if show_parent_layers else "") + "{:>%d}  {:>%d} {:>15} {:>15}" % (_len_str_layer, _len_str_shapes)
 
     """ starting to build output text """
 
     # Table header
     lines = list()
     lines.append('-' * _len_line)
-    lines.append(fmt.format("Layer (type)", "Input Shape" if show_input else "Output Shape", "Param #", "Tr. Param #"))
+    _fmt_args = ("Parent Layers",) if show_parent_layers else ()
+    _fmt_args += ("Layer (type)", f'{"Input" if show_input else "Output"} Shape', "Param #", "Tr. Param #")
+    lines.append(fmt.format(*_fmt_args))
     lines.append('=' * _len_line)
 
     total_params = 0
     trainable_params = 0
     for layer in summary:
         # Table content (for each layer)
-        line_new = fmt.format(
-                layer,
-                ', '.join([str(_) for _ in summary[layer][_key_shape]]),
-                "{0:,}".format(summary[layer]["nb_params"]),
-                "{0:,}".format(summary[layer]["nb_params_trainable"]),
-            )
+        _fmt_args = (summary[layer]["parent_layers"], ) if show_parent_layers else ()
+        _fmt_args += (layer,
+                      ", ".join([str(_) for _ in summary[layer][_key_shape]]),
+                      "{0:,}".format(summary[layer]["nb_params"]),
+                      "{0:,}".format(summary[layer]["nb_params_trainable"]))
+        line_new = fmt.format(*_fmt_args)
         lines.append(line_new)
 
         total_params += summary[layer]["nb_params"]
@@ -136,12 +156,8 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
 
     if show_hierarchical:
         h_summary, _ = hierarchical_summary(model, print_summary=False)
-
-        # Building hierarchical output
-        _pad = int(max(max(len(_) for _ in h_summary.split('\n')) - 20, 0) / 2)
-        lines.append('\n\n' + '=' * _pad + ' Hierarchical Summary ' + '=' * _pad + '\n')
+        lines.append('\n')
         lines.append(h_summary)
-        lines.append('\n\n' + '=' * (_pad * 2 + 22) + '\n')
 
     str_summary = '\n'.join(lines)
     if print_summary:
