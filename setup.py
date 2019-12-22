@@ -4,18 +4,19 @@ with open('README.md') as f:
     long_description = f.read()
 
 setup_info = dict(
-    name='modelsummary',
-    version='1.1.6',
-    author='Tae Hwan Jung(@graykode)',
-    author_email='nlkey2022@gmail.com',
-    url='https://github.com/graykode/modelsummary',
-    description='All Model summary in PyTorch similar to `model.summary()` in Keras',
+    name='pytorch_model_summary',
+    version='0.1',
+    author='Alison Marczewski',
+    author_email='alison.marczewski@gmail.com',
+    url='https://github.com/amarczew/pytorch_model_summary',
+    description='It is a Keras style model.summary() implementation for PyTorch',
     long_description=long_description,
     long_description_content_type='text/markdown',  # This is important!
     license='MIT',
-    install_requires=[ 'tqdm', 'torch', 'numpy'],
-    keywords='pytorch model summary model.summary()',
-    packages=["modelsummary"],
+    install_requires=['tqdm', 'torch', 'numpy'],
+    keywords='pytorch model summary model.summary() keras',
+    packages=['pytorch_model_summary'],
+    python_requires='>=3.6'
 )
 
 setup(**setup_info)

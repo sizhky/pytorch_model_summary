@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-from modelsummary import summary
+from pytorch_model_summary import summary
 
 # S: Symbol that shows starting of decoding input
 # E: Symbol that shows starting of decoding output
@@ -182,14 +182,21 @@ class Transformer(nn.Module):
         dec_logits = self.projection(dec_outputs)
         return dec_logits.view(-1, dec_logits.size(-1)), enc_self_attns, dec_self_attns, dec_enc_attns
 
+
 model = Transformer()
 enc_inputs, dec_inputs, target_batch = make_batch(sentences)
 
 # show input shape
-summary(model, enc_inputs, dec_inputs, show_input=True)
+summary(model, enc_inputs, dec_inputs, show_input=True, print_summary=True)
 
-# show output shape
-summary(model, enc_inputs, dec_inputs, show_input=False)
+# show output shape and batch_size in table. In addition, also hierarchical summary version
+summary(model, enc_inputs, dec_inputs, batch_size=1, show_hierarchical=True, print_summary=True)
 
-# show hierarchical struct
-summary(model, enc_inputs, dec_inputs, show_hierarchical=True)
+# show layers until depth 2
+summary(model, enc_inputs, dec_inputs, max_depth=2, print_summary=True)
+
+# show deepest layers
+summary(model, enc_inputs, dec_inputs, max_depth=None, print_summary=True)
+
+# show layers until depth 3 and add column with parent layers
+summary(model, enc_inputs, dec_inputs, max_depth=3, show_parent_layers=True, print_summary=True)

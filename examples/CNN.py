@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from modelsummary import summary
+from pytorch_model_summary import summary
+
 
 class Net(nn.Module):
     def __init__(self):
@@ -22,8 +23,12 @@ class Net(nn.Module):
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
 
+
 # show input shape
-summary(Net(), torch.zeros((1, 1, 28, 28)), show_input=True)
+print(summary(Net(), torch.zeros((1, 1, 28, 28)), show_input=True))
 
 # show output shape
-summary(Net(), torch.zeros((1, 1, 28, 28)), show_input=False)
+print(summary(Net(), torch.zeros((1, 1, 28, 28)), show_input=False))
+
+# show output shape and hierarchical view of net
+print(summary(Net(), torch.zeros((1, 1, 28, 28)), show_input=False, show_hierarchical=True))
