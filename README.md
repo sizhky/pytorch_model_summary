@@ -2,7 +2,7 @@
 
 It is a Keras style model.summary() implementation for PyTorch
 
-This is a Improved PyTorch library of [modelsummary](https://github.com/graykode/modelsummary). Like in `modelsummary`, **It does not care with number of Input parameter!**
+This is an Improved PyTorch library of [modelsummary](https://github.com/graykode/modelsummary). Like in `modelsummary`, **It does not care with number of Input parameter!**
 
 ### Improvements:
 - For user defined pytorch layers, now `summary` can show layers inside it
@@ -131,7 +131,7 @@ Net(
 
 Just download with **pip**
 
-`pip install pytorch_model_summary` and 
+`pip install pytorch-model-summary` and
 ```python
 from pytorch_model_summary import summary
 ``` 

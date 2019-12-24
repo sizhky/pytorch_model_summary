@@ -106,7 +106,14 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
 
     # register hook
     model.apply(register_hook)
+    
+    model_training = model.training
+
+    model.eval()
     model(*inputs)
+
+    if model_training:
+        model.train()
 
     # remove these hooks
     for h in hooks:
