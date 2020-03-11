@@ -1,4 +1,7 @@
 ## Pytorch Model Summary
+[![PyPI version fury.io](https://badge.fury.io/py/pytorch-model-summary.svg)](https://pypi.python.org/pypi/pytorch-model-summary/)
+[![Downloads](https://pepy.tech/badge/pytorch-model-summary)](https://pepy.tech/project/pytorch-model-summary)
+
 
 It is a Keras style model.summary() implementation for PyTorch
 
