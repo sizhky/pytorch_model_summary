@@ -100,9 +100,9 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
     def model_input_hook(module, input):
         summary['Input'] = OrderedDict()
         summary['Input']['input_shape'] = shapes(input)
-        summary['Input']['nb_params'] = 1
-        summary['Input']['nb_params_trainable'] = 1
-        summary['Input']['trainable'] = 1
+        summary['Input']['nb_params'] = -1
+        summary['Input']['nb_params_trainable'] = -1
+        summary['Input']['trainable'] = -1
         summary['Input']['parent_layers'] = module_summary.get(id(module)).get('parent_layers')
         summary['Input']["output_shape"] = ()
     hooks.append(model.register_forward_pre_hook(model_input_hook))
@@ -112,9 +112,9 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
     def model_output_hook(module, input, output):
         summary['Output'] = OrderedDict()
         summary['Output']['input_shape'] = ()
-        summary['Output']['nb_params'] = 1
-        summary['Output']['nb_params_trainable'] = 1
-        summary['Output']['trainable'] = 1
+        summary['Output']['nb_params'] = -1
+        summary['Output']['nb_params_trainable'] = -1
+        summary['Output']['trainable'] = -1
         summary['Output']['parent_layers'] = module_summary.get(id(module)).get('parent_layers')
         summary['Output']["output_shape"] = shapes(output)
 
