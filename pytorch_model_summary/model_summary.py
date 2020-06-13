@@ -62,18 +62,15 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
 
             return _lst
 
-        def hook(module, input, output=None):
+        def hook(module, input, output):
             module_name = module_summary.get(id(module)).get('module_name')
             module_idx = len(summary)
 
             m_key = "%s-%i" % (module_name, module_idx + 1)
             summary[m_key] = OrderedDict()
             summary[m_key]['parent_layers'] = module_summary.get(id(module)).get('parent_layers')
-
             summary[m_key]["input_shape"] = shapes(input) if len(input) != 0 else input
-
-            if show_input is False and output is not None:
-                summary[m_key]["output_shape"] = shapes(output)
+            summary[m_key]["output_shape"] = shapes(output)
 
             params = 0
             params_trainable = 0
@@ -91,10 +88,7 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
 
         _map_module = module_summary.get(id(module), None)
         if _map_module is not None and _map_module.get('show'):
-            if show_input is True:
-                hooks.append(module.register_forward_pre_hook(hook))
-            else:
-                hooks.append(module.register_forward_hook(hook))
+            hooks.append(module.register_forward_hook(hook))
 
     # create properties
     summary = OrderedDict()
@@ -133,7 +127,7 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
     lines = list()
     lines.append('-' * _len_line)
     _fmt_args = ("Parent Layers",) if show_parent_layers else ()
-    _fmt_args += ("Layer (type)", f'{"Input" if show_input else "Output"} Shape', "Param #", "Tr. Param #")
+    _fmt_args += ("Layer (type)", "Input Shape", "Output Shape", "Param #", "Tr. Param #")
     lines.append(fmt.format(*_fmt_args))
     lines.append('=' * _len_line)
 
@@ -143,7 +137,8 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
         # Table content (for each layer)
         _fmt_args = (summary[layer]["parent_layers"], ) if show_parent_layers else ()
         _fmt_args += (layer,
-                      ", ".join([str(_) for _ in summary[layer][_key_shape]]),
+                      ", ".join([str(_) for _ in summary[layer]['input_shape']]),
+                      ", ".join([str(_) for _ in summary[layer]['output_shape']]),
                       "{0:,}".format(summary[layer]["nb_params"]),
                       "{0:,}".format(summary[layer]["nb_params_trainable"]))
         line_new = fmt.format(*_fmt_args)
