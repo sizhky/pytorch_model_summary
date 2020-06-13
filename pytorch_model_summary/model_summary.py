@@ -4,7 +4,7 @@
 
 import torch
 import torch.nn as nn
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from pytorch_model_summary.hierarchical_summary import hierarchical_summary
 
 
@@ -43,24 +43,24 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
         for k, v in module_summary.items():
             module_summary[k]['show'] = v['depth'] == max_depth or (v['depth'] < max_depth and v['n_children'] == 0)
 
+    def shapes(x):
+        _lst = list()
+
+        def _shapes(_):
+            if isinstance(_, torch.Tensor):
+                _lst.append(list(_.size()))
+            elif isinstance(_, (tuple, list)):
+                for _x in _:
+                    _shapes(_x)
+            else:
+                # TODO: decide what to do when there is an input which is not a tensor
+                raise Exception('Object not supported')
+
+        _shapes(x)
+
+        return _lst
+
     def register_hook(module):
-        
-        def shapes(x):
-            _lst = list()
-
-            def _shapes(_):
-                if isinstance(_, torch.Tensor):
-                    _lst.append(list(_.size()))
-                elif isinstance(_, (tuple, list)):
-                    for _x in _:
-                        _shapes(_x)
-                else:
-                    # TODO: decide what to do when there is an input which is not a tensor
-                    raise Exception('Object not supported')
-
-            _shapes(x)
-
-            return _lst
 
         def hook(module, input, output):
             module_name = module_summary.get(id(module)).get('module_name')
@@ -97,9 +97,28 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
 
     # register id of parent modules
     build_module_tree(model)
+    def model_input_hook(module, input):
+        summary['Input'] = OrderedDict()
+        summary['Input']['input_shape'] = shapes(input)
+        summary['Input']['nb_params'] = 1
+        summary['Input']['nb_params_trainable'] = 1
+        summary['Input']['trainable'] = 1
+        summary['Input']['parent_layers'] = module_summary.get(id(module)).get('parent_layers')
+        summary['Input']["output_shape"] = ()
+    hooks.append(model.register_forward_pre_hook(model_input_hook))
 
     # register hook
     model.apply(register_hook)
+    def model_output_hook(module, input, output):
+        summary['Output'] = OrderedDict()
+        summary['Output']['input_shape'] = ()
+        summary['Output']['nb_params'] = 1
+        summary['Output']['nb_params_trainable'] = 1
+        summary['Output']['trainable'] = 1
+        summary['Output']['parent_layers'] = module_summary.get(id(module)).get('parent_layers')
+        summary['Output']["output_shape"] = shapes(output)
+
+    hooks.append(model.register_forward_hook(model_output_hook))
     
     model_training = model.training
 
