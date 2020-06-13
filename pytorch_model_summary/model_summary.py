@@ -9,7 +9,7 @@ from pytorch_model_summary.hierarchical_summary import hierarchical_summary
 
 
 def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=False, 
-            print_summary=False, max_depth=1, show_parent_layers=False):
+            print_summary=True, max_depth=1, show_parent_layers=False):
 
     max_depth = max_depth if max_depth is not None else 9999
 
@@ -169,5 +169,5 @@ def summary(model, *inputs, batch_size=-1, show_input=False, show_hierarchical=F
     str_summary = '\n'.join(lines)
     if print_summary:
         print(str_summary)
-
-    return str_summary
+    else:
+        return str_summary
